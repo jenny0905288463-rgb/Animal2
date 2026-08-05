@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動物賓果</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f7f4; padding: 15px; text-align: center; color: #2d3748; margin: 0; }
+        
+        /* 隊名輸入開場畫面 */
+        .start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f7f4; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 200; padding: 20px; }
+        .start-card { background: white; padding: 25px 20px; border-radius: 16px; border: 2px solid #a8e6cf; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 340px; text-align: center; }
+        .start-card h2 { color: #2e7d32; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem; }
+        .start-card p { color: #718096; font-size: 0.95rem; margin-bottom: 20px; }
+        .start-input { width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 8px; font-size: 1rem; text-align: center; outline: none; margin-bottom: 15px; }
+        .start-input:focus { border-color: #48bb78; }
+        .start-btn { width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .start-btn:hover { background: #38a169; }
+
+        /* 主遊戲介面 */
+        h2 { color: #2e7d32; margin-top: 5px; margin-bottom: 5px; }
+        .team-display { font-size: 1rem; color: #4a5568; margin-bottom: 5px; font-weight: 500; }
+        .team-name-highlight { color: #2e7d32; font-weight: bold; }
+        .progress { font-size: 1.1rem; margin-bottom: 15px; font-weight: bold; color: #e53e3e; }
+        
+        /* 網格與卡片設計 */
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 400px; margin: 0 auto 20px auto; }
+        .card { background: white; border: 2px solid #a8e6cf; border-radius: 10px; padding: 6px 2px; min-height: 82px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.1s; }
+        .card:active { transform: scale(0.96); }
+        .card.done { background: #e8f5e9; border-color: #4caf50; }
+        .card.fail { background: #ffebee; border-color: #ef5350; }
+        .card-icon { font-size: 1.5rem; line-height: 1.2; }
+        .card-region { font-size: 0.72rem; color: #4a5568; margin-top: 4px; font-weight: bold; line-height: 1.1; word-break: break-all; padding: 0 2px; }
+
+        /* 說明區塊樣式 */
+        .rules-card { background: white; max-width: 400px; margin: 0 auto; padding: 15px; border-radius: 12px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 0.9rem; line-height: 1.5; color: #4a5568; border: 1px solid #e2e8f0; }
+        .rules-card h3 { color: #2e7d32; font-size: 1rem; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin-top: 0; }
+        .rules-card ul { padding-left: 20px; margin-bottom: 0; }
+        .rules-card li { margin-bottom: 4px; }
+
+        /* 彈窗樣式 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; padding: 15px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 20px; border-radius: 14px; max-width: 90%; width: 340px; text-align: left; max-height: 85vh; overflow-y: auto; }
+        .modal-tag { display: inline-block; background: #e6fffa; color: #234e52; border: 1px solid #b2f5ea; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
+        .opt-btn { display: block; width: 100%; margin: 8px 0; padding: 10px; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 8px; text-align: left; cursor: pointer; font-size: 0.9rem; line-height: 1.4; color: #2d3748; }
+        .act-btn { width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; font-size: 1rem; }
+        .notice-photo { background: #fffaf0; border: 1px solid #fbd38d; padding: 10px; border-radius: 8px; font-size: 0.9rem; margin: 10px 0; color: #9c4221; font-weight: bold; }
+        .notice-spot { background: #f3e8ff; border: 1px solid #d8b4fe; padding: 10px; border-radius: 8px; font-size: 0.9rem; margin: 10px 0; color: #6b21a8; font-weight: bold; }
+        .explanation { background: #f0fff4; border: 1px solid #9ae6b4; padding: 10px; border-radius: 8px; margin-top: 10px; color: #22543d; font-size: 0.9rem; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <!-- 隊名輸入畫面 -->
+    <div class="start-screen" id="startScreen">
+        <div class="start-card">
+            <h2>🦁 動物賓果 🦒</h2>
+            <p>歡迎來到動物園冒險！請輸入您的隊伍名稱開始遊戲：</p>
+            <input type="text" class="start-input" id="teamInput" placeholder="請輸入隊名 (例如: 第一隊)" />
+            <button class="start-btn" onclick="startGame()">確認隊名並開始 🚀</button>
+        </div>
+    </div>
+
+    <!-- 主遊戲畫面 -->
+    <h2>🦁 動物賓果 🦒</h2>
+    <div class="team-display">隊伍：<span class="team-name-highlight" id="displayTeamName">-</span></div>
+    <div class="progress">連線進度：<span id="lineCount">0 / 3 條線</span></div>
+    
+    <div class="grid" id="grid"></div>
+
+    <!-- 遊戲說明區塊 -->
+    <div class="rules-card">
+        <h3>📌 遊戲規則與說明</h3>
+        <ul>
+            <li><b>通關目標</b>：完成任意 <b>3 條線</b>（橫、豎、對角線皆可）即過關！</li>
+            <li><b>🧠 知識問答</b>：點開後作答，每題最多嘗試 <b>2 次</b>。全錯該格失效 (💣)。</li>
+            <li><b>📸 指定拍照</b>：至指定地點拍照，請隊輔傳至 Line 群組後點擊完成 (🎊)。</li>
+            <li><b>🔍 大家來找碴</b>：至 Line 群組看圖找答案，隊輔確認後點擊完成 (🎊)。</li>
+        </ul>
+    </div>
+
+    <!-- 題目彈窗 -->
+    <div class="modal" id="modal">
+        <div class="modal-content" id="modalBody"></div>
+    </div>
+
+    <script>
+        // 任務資料庫 (含更新後的 8 題知識問答 + 6 題拍照 + 2 題找碴)
+        var tasks = [
+            { 
+                t:"quiz", 
+                region: "樹懶凝時窗",
+                q:"二趾樹懶的毛皮有時候看起來綠綠的，是因為上面長了「藻類」，這對樹懶有什麼好處呢？", 
+                o:["(A) 讓牠看起來更漂亮", "(B) 當作備用的點心，肚子餓可以吃", "(C) 變成保護色，讓獵食者不容易發現牠"], 
+                a:2, 
+                e:"(C)：藻類可以幫樹懶在綠色的森林裡隱身。" 
+            },
+            { 
+                t:"quiz", 
+                region: "水豚森林浴",
+                q:"水豚被稱為「半水棲動物」，意思是很會游泳。請問牠們的腳趾之間長了什麼，能幫助牠們在水裡游得更快？", 
+                o:["(A) 像魚一樣的鰭", "(B) 像鴨子一樣的「蹼」", "(C) 像螃蟹一樣的硬殼"], 
+                a:1, 
+                e:"(B)：水豚腳上的「蹼」跟鴨子一樣，是游泳的神器。" 
+            },
+            { 
+                t:"quiz", 
+                region: "沙丘部落",
+                q:"小食蟻獸在樹上爬行時，牠的尾巴具有「抓握力」，請問這個尾巴主要的功能是什麼？", 
+                o:["(A) 像「第五隻手」一樣能捲住樹枝，防止摔下樹", "(B) 像風扇一樣揮動來散熱", "(C) 用來拍打地面嚇跑敵人"], 
+                a:0, 
+                e:"(A)：牠們的尾巴很強壯，可以緊緊捲住樹枝。" 
+            },
+            { 
+                t:"quiz", 
+                region: "天羽觀鳥台",
+                q:"哈里斯鷹被稱為「空中之狼」，是因為牠們跟其他老鷹最不一樣的地方是什麼？", 
+                o:["(A) 牠們只在晚上出來抓獵物", "(B) 牠們會「成群結隊」分工合作抓獵物", "(C) 牠們不需要吃東西也能活很久"], 
+                a:1, 
+                e:"(B)：大部分的老鷹喜歡單獨行動，只有哈里斯鷹喜歡團體合作喔！" 
+            },
+            { 
+                t:"quiz", 
+                region: "狐狸谷",
+                q:"狐狸（特別是赤狐）在冬天的雪地上找東西吃時，有時候會突然跳得非常高，然後「頭朝下」插進雪堆裡，請問牠是在做什麼呢？", 
+                o:["(A) 在玩雪打滾", "(B) 聽雪地底下的老鼠聲音，準備捕捉牠們", "(C) 肚子太餓了，正在找雪地裡的冰淇淋"], 
+                a:1, 
+                e:"(B)：狐狸的聽力非常敏銳，能聽到雪地下小動物移動的聲音，然後精準跳入雪中捕食。" 
+            },
+            { 
+                t:"quiz", 
+                region: "沙丘部落",
+                q:"狐獴住在很熱的大草原上，牠們的眼睛周圍有「黑黑的圈圈」（就像戴了墨鏡一樣），請問這個黑圈圈有什麼功能？", 
+                o:["(A) 讓牠們看起來很酷、很兇猛", "(B) 吸收太陽光的強光，防止眼睛被刺眼的光線曬傷", "(C) 代表牠們昨天晚上沒有睡好"], 
+                a:1, 
+                e:"(B)：眼睛周圍的黑色毛髮就像天然的墨鏡，能防止大太陽刺眼，讓牠們能隨時注意天空有沒有老鷹。" 
+            },
+            { 
+                t:"quiz", 
+                region: "小馬農莊",
+                q:"迷你馬雖然個頭小小、長得很可愛，但牠們非常聰明且穩定。除了當寵物，有些迷你馬還被訓練來擔任什麼神聖的任務，幫助眼睛看不見的人？", 
+                o:["(A) 負責幫忙送信的「郵差馬」", "(B) 引導視障者走路的「導盲馬」", "(C) 幫忙拿重物的「搬運馬」"], 
+                a:1, 
+                e:"(B)：迷你馬的視力很好、記憶力強，而且壽命比狗狗長，所以現在有些國家會訓練牠們成為「導盲馬」，是視障人士最溫柔的小助手！" 
+            },
+            { 
+                t:"quiz", 
+                region: "水獺溪流棧",
+                q:"水獺是非常厲害的「捕魚大師」，但牠們大多在濁濁的水裡或晚上找東西吃，請問牠們是靠臉上的什麼器官來「感覺」水流和獵物的位置呢？", 
+                o:["(A) 圓圓的大耳朵", "(B) 敏感又長長的「鬍鬚」", "(C) 亮晶晶的鼻子"], 
+                a:1, 
+                e:"(B)：水獺的鬍鬚非常敏感，就像觸角一樣！即使在看不清楚的水裡，只要魚游過去引起水流變化，牠們的鬍鬚就能立刻感受到，幫牠們精準抓到魚喔！" 
+            },
+            { t:"photo", region: "天羽觀鳥台", q:"請至「天羽觀鳥台」拍攝任意照片。" },
+            { t:"photo", region: "時空花廊", q:"請至「時空花廊」拍攝指定照片。" },
+            { t:"photo", region: "水豚森林浴", q:"請至「水豚森林浴」拍攝任意照片。" },
+            { t:"photo", region: "竹夢湖", q:"請至「竹夢湖」拍攝指定照片。" },
+            { t:"photo", region: "小馬農莊", q:"請至「小馬農莊」拍攝一張與此區動物的照片。" },
+            { t:"photo", region: "狐狸谷", q:"請至「狐狸谷」拍攝任意照片。" },
+            { t:"spot", region: "LINE任務", q:"大家來找碴 (一)：請觀察 Line 群組圖片，找出相異之處！" },
+            { t:"spot", region: "LINE任務", q:"大家來找碴 (二)：請觀察 Line 群組圖片，找出相異之處！" }
+        ];
+
+        var state = [];
+        var curr = null;
+
+        function startGame() {
+            var input = document.getElementById('teamInput').value.trim();
+            if (input === "") {
+                alert("請輸入您的隊伍名稱喔！");
+                return;
+            }
+            document.getElementById('displayTeamName').innerText = input;
+            document.getElementById('startScreen').style.display = 'none';
+            
+            // 洗牌並初始化
+            var copy = tasks.slice();
+            for (var i = copy.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var temp = copy[i]; copy[i] = copy[j]; copy[j] = temp;
+            }
+            state = [];
+            for (var k = 0; k < copy.length; k++) {
+                state.push({ data: copy[k], status: 'none', err: 0 });
+            }
+            draw();
+        }
+
+        function draw() {
+            var g = document.getElementById('grid');
+            g.innerHTML = '';
+            for (var i = 0; i < state.length; i++) {
+                (function(idx){
+                    var item = state[idx];
+                    var d = document.createElement('div');
+                    d.className = 'card ' + (item.status === 'ok' ? 'done' : (item.status === 'fail' ? 'fail' : ''));
+                    
+                    var icon = item.status === 'ok' ? '🎊' : (item.status === 'fail' ? '💣' : '❓');
+                    d.innerHTML = '<div class="card-icon">' + icon + '</div>' + 
+                                  '<div class="card-region">' + item.data.region + '</div>';
+                    
+                    d.onclick = function() { clickCard(idx); };
+                    g.appendChild(d);
+                })(i);
+            }
+        }
+
+        function clickCard(idx) {
+            curr = idx;
+            var item = state[idx];
+            var b = document.getElementById('modalBody');
+            var h = '';
+
+            h += '<div class="modal-tag">📍 ' + item.data.region + '</div>';
+
+            if (item.data.t === 'quiz') {
+                h += '<p style="font-weight:bold; margin-bottom:12px; line-height:1.4;">' + item.data.q + '</p>';
+                for (var i = 0; i < item.data.o.length; i++) {
+                    var dis = item.status !== 'none' ? 'disabled' : '';
+                    h += '<button class="opt-btn" ' + dis + ' onclick="ans(' + i + ')">' + item.data.o[i] + '</button>';
+                }
+                if (item.status !== 'none') {
+                    h += '<div class="explanation"><b>正確答案與解析：</b><br>' + item.data.e + '</div>';
+                }
+            } else if (item.data.t === 'photo') {
+                h += '<p style="font-weight:bold; margin-bottom:10px; line-height:1.4;">' + item.data.q + '</p>';
+                h += '<div class="notice-photo">📌 請隊輔將照片傳至 Line 群組，上傳完成後即可點擊下方完成！</div>';
+                if (item.status === 'none') h += '<button class="act-btn" onclick="finish()">完成拍照任務 🎊</button>';
+                else h += '<div class="explanation">🎉 本任務已完成！</div>';
+            } else {
+                h += '<p style="font-weight:bold; margin-bottom:10px; line-height:1.4;">' + item.data.q + '</p>';
+                h += '<div class="notice-spot">🔍 請隊輔至 Line 群組確認答題是否正確，正確即可點擊下方完成！</div>';
+                if (item.status === 'none') h += '<button class="act-btn" onclick="finish()">完成找碴任務 🎊</button>';
+                else h += '<div class="explanation">🎉 本任務已完成！</div>';
+            }
+
+            h += '<button style="margin-top:15px; background:#edf2f7; border:none; color:#4a5568; padding:8px; width:100%; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="closeM()">關閉視窗</button>';
+            b.innerHTML = h;
+            document.getElementById('modal').className = 'modal active';
+        }
+
+        function ans(i) {
+            var item = state[curr];
+            if (item.status !== 'none') return;
+            if (i === item.data.a) {
+                item.status = 'ok';
+                draw(); clickCard(curr); check();
+            } else {
+                item.err++;
+                if (item.err >= 2) {
+                    item.status = 'fail';
+                    draw(); clickCard(curr);
+                } else {
+                    alert('❌ 答錯囉！還有 1 次機會！');
+                }
+            }
+        }
+
+        function finish() {
+            state[curr].status = 'ok';
+            draw(); clickCard(curr); check();
+        }
+
+        function check() {
+            var lines = [[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],[0,5,10,15],[3,6,9,12]];
+            var c = 0;
+            for (var i = 0; i < lines.length; i++) {
+                if (state[lines[i][0]].status === 'ok' && state[lines[i][1]].status === 'ok' && state[lines[i][2]].status === 'ok' && state[lines[i][3]].status === 'ok') c++;
+            }
+            document.getElementById('lineCount').innerText = c + ' / 3 條線';
+            if (c >= 3) alert('🎉 恭喜通關！成功連成 3 條線！');
+        }
+
+        function closeM() { document.getElementById('modal').className = 'modal'; }
+    </script>
+</body>
+</html>
